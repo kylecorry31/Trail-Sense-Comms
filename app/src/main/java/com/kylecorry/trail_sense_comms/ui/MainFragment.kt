@@ -1,72 +1,60 @@
 package com.kylecorry.trail_sense_comms.ui
 
-import android.Manifest
 import android.annotation.SuppressLint
-import android.bluetooth.BluetoothDevice
 import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.view.isVisible
-import com.kylecorry.andromeda.connection.bluetooth.BluetoothScanner
-import com.kylecorry.andromeda.connection.bluetooth.BluetoothService
+import com.kylecorry.andromeda.alerts.loading.AlertLoadingIndicator
+import com.kylecorry.andromeda.alerts.loading.ILoadingIndicator
 import com.kylecorry.andromeda.connection.bluetooth.IBluetoothDevice
 import com.kylecorry.andromeda.core.tryOrDefault
 import com.kylecorry.andromeda.fragments.BoundFragment
 import com.kylecorry.andromeda.fragments.inBackground
-import com.kylecorry.andromeda.permissions.Permissions
+import com.kylecorry.andromeda.fragments.show
 import com.kylecorry.andromeda.views.list.ListItem
 import com.kylecorry.andromeda.views.list.ResourceListIcon
 import com.kylecorry.luna.coroutines.onIO
 import com.kylecorry.sol.time.Time.toZonedDateTime
 import com.kylecorry.trail_sense_comms.R
 import com.kylecorry.trail_sense_comms.databinding.FragmentMainBinding
-import com.kylecorry.trail_sense_comms.infrastructure.nearby.bluetooth.BluetoothListener
-import com.kylecorry.trail_sense_comms.infrastructure.nearby.bluetooth.SocketBluetoothDevice
+import com.kylecorry.trail_sense_comms.infrastructure.nearby.DeviceManager
+import com.kylecorry.trail_sense_comms.infrastructure.nearby.bluetooth.readUntil
 import dagger.hilt.android.AndroidEntryPoint
 import java.time.Instant
 import java.time.format.DateTimeFormatter
-import java.util.UUID
 
 @AndroidEntryPoint
 class MainFragment : BoundFragment<FragmentMainBinding>() {
 
-    private val bluetooth by lazy { BluetoothService(requireContext()) }
-
-    // TODO: Support multiple devices (groups?)
     // TODO: Try out just in time connection (don't connect until message is sent)
+    // TODO: Run in background
+    // TODO: Show connection status of all devices in the group
+    // TODO: Handle permissions
+
+    private val manager by lazy { DeviceManager(requireContext()) }
     private var connectedDevice by state<IBluetoothDevice?>(null)
     private var connected by state(false)
-    private var devices by state(emptyList<BluetoothDevice>())
-    private val listener by lazy { BluetoothListener(requireContext()) }
+    private var isConnecting by state(false)
     private var messages by state(emptyList<Message>())
-    private val scanner by lazy { BluetoothScanner(requireContext()) }
-
-    // TODO: Is this the right thing to do?
-    private val uuid = UUID.fromString("f237b0ff-ef4c-43c9-a476-44508cb26e58")
-
-    // TODO: Attempt to reconnect when disconnected
-
-    // TODO: Run in background
-
-    // TODO: Show connection status of all devices in the group
+    private var sheet: DevicePickerBottomSheet? = null
+    private var connectingDialog: ILoadingIndicator? = null
 
     @SuppressLint("ClickableViewAccessibility", "MissingPermission")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // TODO: Handle permissions
-        if (
-            !Permissions.hasPermission(requireContext(), Manifest.permission.BLUETOOTH) ||
-            !Permissions.hasPermission(requireContext(), Manifest.permission.BLUETOOTH_CONNECT) ||
-            !Permissions.hasPermission(requireContext(), Manifest.permission.BLUETOOTH_SCAN) ||
-            !Permissions.hasPermission(requireContext(), Manifest.permission.BLUETOOTH_ADMIN) ||
-            !Permissions.hasPermission(requireContext(), Manifest.permission.BLUETOOTH_ADVERTISE)
-        ){
+        if (!PermissionUtils.hasBluetoothPermission(requireContext())) {
             return
         }
 
+        manager.onConnectionChanged {
+            connected = manager.connected
+            isConnecting = manager.isConnecting
+            connectedDevice = manager.connectedDevice
+        }
 
         binding.sendButton.setOnClickListener {
             val text = binding.messageInput.text.toString()
@@ -88,30 +76,6 @@ class MainFragment : BoundFragment<FragmentMainBinding>() {
             // TODO: Show send status
         }
 
-        // TODO: Enable scanner / move this out of the fragment
-        devices = bluetooth.bondedDevices
-//        observe(scanner) {
-//            devices = (scanner.devices + bluetooth.bondedDevices).distinctBy { it.address }
-//        }
-
-        // Start listener
-        inBackground {
-            onIO {
-                // TODO: Only keep listening when not connected to all devices in the chat
-                while (true) {
-                    val socket = listener.listen("Test", uuid) ?: return@onIO
-                    println("Connected to ${socket.remoteDevice.name}")
-                    connect(
-                        SocketBluetoothDevice(
-                            requireContext(),
-                            socket.remoteDevice.address,
-                            socket
-                        ) { it.createRfcommSocketToServiceRecord(uuid) }
-                    )
-                }
-            }
-        }
-
         inBackground {
             onIO {
                 while (true) {
@@ -128,19 +92,12 @@ class MainFragment : BoundFragment<FragmentMainBinding>() {
 
     override fun onResume() {
         super.onResume()
-        connectedDevice?.connect()
+        manager.start()
     }
 
     override fun onPause() {
         super.onPause()
-        connectedDevice?.disconnect()
-    }
-
-    private fun connect(device: IBluetoothDevice) {
-        connectedDevice?.disconnect()
-        connectedDevice = device
-        connectedDevice?.connect()
-        connected = connectedDevice?.isConnected() == true
+        manager.stop()
     }
 
     @SuppressLint("MissingPermission")
@@ -149,15 +106,6 @@ class MainFragment : BoundFragment<FragmentMainBinding>() {
         effect("connection", connectedDevice?.name, connected) {
             binding.toolbar.subtitle.text =
                 if (connected) "Connected to ${connectedDevice?.name}" else "Disconnected"
-        }
-
-        effect("devices", devices) {
-            binding.list.setItems(devices.filter { it.name != null }.mapIndexed { index, device ->
-                ListItem(index.toLong(), device.name ?: "??", device.address) {
-                    println("Connecting to ${device.name}")
-                    connect(bluetooth.getSecureDevice(device.address, uuid))
-                }
-            })
         }
 
         effect("messages", messages) {
@@ -181,7 +129,34 @@ class MainFragment : BoundFragment<FragmentMainBinding>() {
             }
         }
 
-        binding.list.isVisible = !connected
+        effect("device_selector", connected) {
+            if (!connected) {
+                sheet?.dismiss()
+                sheet = DevicePickerBottomSheet()
+                sheet?.setOnDeviceSelected {
+                    sheet?.dismiss()
+                    manager.connect(it)
+                }
+                sheet?.show(this)
+            } else {
+                sheet?.dismiss()
+                sheet = null
+            }
+        }
+
+        effect("connecting", isConnecting) {
+            if (isConnecting) {
+                connectingDialog = AlertLoadingIndicator(
+                    requireContext(),
+                    getString(R.string.connecting)
+                )
+                connectingDialog?.show()
+            } else {
+                connectingDialog?.hide()
+                connectingDialog = null
+            }
+        }
+
         binding.messageInputLayout.isVisible = connected
     }
 
@@ -212,20 +187,6 @@ class MainFragment : BoundFragment<FragmentMainBinding>() {
             )
         }
     }
-
-    private fun IBluetoothDevice.readUntil(text: String): String {
-        var matchIndex = 0
-        return readUntil { char ->
-            if (char == text[matchIndex]) {
-                matchIndex++
-                matchIndex >= text.length
-            } else {
-                matchIndex = 0
-                false
-            }
-        }
-    }
-
 
     override fun generateBinding(
         layoutInflater: LayoutInflater, container: ViewGroup?

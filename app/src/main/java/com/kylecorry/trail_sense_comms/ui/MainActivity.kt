@@ -30,6 +30,7 @@ class MainActivity : AndromedaActivity() {
     private val binding: ActivityMainBinding
         get() = _binding!!
 
+    // TODO: Only request location on older devices
     private val permissions = mutableListOf(
         Manifest.permission.ACCESS_COARSE_LOCATION,
         Manifest.permission.ACCESS_FINE_LOCATION,
