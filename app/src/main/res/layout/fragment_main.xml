@@ -13,6 +13,13 @@
         app:subtitle="Disconnected"
         app:title="Comms" />
 
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/readOutMessagesSwitch"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:text="@string/read_out_messages" />
+
     <com.kylecorry.andromeda.views.list.AndromedaListView
         android:id="@+id/messages"
         android:layout_width="match_parent"

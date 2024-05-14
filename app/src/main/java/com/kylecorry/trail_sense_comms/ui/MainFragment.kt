@@ -14,6 +14,7 @@ import com.kylecorry.andromeda.core.tryOrDefault
 import com.kylecorry.andromeda.fragments.BoundFragment
 import com.kylecorry.andromeda.fragments.inBackground
 import com.kylecorry.andromeda.fragments.show
+import com.kylecorry.andromeda.speech.TextToSpeech
 import com.kylecorry.andromeda.views.list.ListItem
 import com.kylecorry.andromeda.views.list.ResourceListIcon
 import com.kylecorry.luna.coroutines.onIO
@@ -35,12 +36,14 @@ class MainFragment : BoundFragment<FragmentMainBinding>() {
     // TODO: Handle permissions
 
     private val manager by lazy { DeviceManager(requireContext()) }
+    private var shouldReadMessages by state(false)
     private var connectedDevice by state<IBluetoothDevice?>(null)
     private var connected by state(false)
     private var isConnecting by state(false)
     private var messages by state(emptyList<Message>())
     private var sheet: DevicePickerBottomSheet? = null
     private var connectingDialog: ILoadingIndicator? = null
+    private val tts by lazy { TextToSpeech(requireContext()) }
 
     @SuppressLint("ClickableViewAccessibility", "MissingPermission")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -54,6 +57,10 @@ class MainFragment : BoundFragment<FragmentMainBinding>() {
             connected = manager.connected
             isConnecting = manager.isConnecting
             connectedDevice = manager.connectedDevice
+        }
+
+        binding.readOutMessagesSwitch.setOnCheckedChangeListener { _, isChecked ->
+            shouldReadMessages = isChecked
         }
 
         binding.sendButton.setOnClickListener {
@@ -98,6 +105,7 @@ class MainFragment : BoundFragment<FragmentMainBinding>() {
     override fun onPause() {
         super.onPause()
         manager.stop()
+        tts.cancel()
     }
 
     @SuppressLint("MissingPermission")
@@ -126,6 +134,11 @@ class MainFragment : BoundFragment<FragmentMainBinding>() {
             })
             if (messages.isNotEmpty()) {
                 binding.messages.scrollToPosition(messages.size - 1, true)
+            }
+
+            val last = messages.lastOrNull()
+            if (last != null && !last.isMe && shouldReadMessages) {
+                tts.speak(last.text)
             }
         }
 
@@ -156,6 +169,8 @@ class MainFragment : BoundFragment<FragmentMainBinding>() {
                 connectingDialog = null
             }
         }
+
+        binding.readOutMessagesSwitch.isChecked = shouldReadMessages
 
         binding.messageInputLayout.isVisible = connected
     }

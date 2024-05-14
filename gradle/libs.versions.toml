@@ -59,6 +59,7 @@ andromeda-pickers = { module = "com.github.kylecorry31.andromeda:pickers", versi
 andromeda-notify = { module = "com.github.kylecorry31.andromeda:notify", version.ref = "andromedaVersion" }
 andromeda-permissions = { module = "com.github.kylecorry31.andromeda:permissions", version.ref = "andromedaVersion" }
 andromeda-preferences = { module = "com.github.kylecorry31.andromeda:preferences", version.ref = "andromedaVersion" }
+andromeda-speech = { module = "com.github.kylecorry31.andromeda:speech", version.ref = "andromedaVersion" }
 andromeda-views = { module = "com.github.kylecorry31.andromeda:views", version.ref = "andromedaVersion" }
 desugar_jdk_libs = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugar_jdk_libs" }
 flexbox = { module = "com.google.android.flexbox:flexbox", version.ref = "flexbox" }

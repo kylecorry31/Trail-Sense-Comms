@@ -111,6 +111,7 @@ dependencies {
     implementation(libs.andromeda.list)
     implementation(libs.andromeda.files)
     implementation(libs.andromeda.views)
+    implementation(libs.andromeda.speech)
 
     // Hilt
     implementation(libs.hilt.android)
