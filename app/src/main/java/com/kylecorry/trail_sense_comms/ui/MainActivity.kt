@@ -13,6 +13,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updateLayoutParams
 import androidx.navigation.NavController
+import androidx.navigation.NavOptions
 import androidx.navigation.fragment.NavHostFragment
 import com.kylecorry.andromeda.core.system.Resources
 import com.kylecorry.andromeda.core.tryOrNothing
@@ -102,10 +103,18 @@ class MainActivity : AndromedaActivity() {
     private fun openDesiredTool(): Boolean {
         val desiredTool = intent?.getStringExtra("tool")
         if (desiredTool == TOOL_TALK) {
-            findNavController().navigate(R.id.talkFragment)
+            findNavController().navigate(
+                R.id.talkFragment,
+                null,
+                NavOptions.Builder().setPopUpTo(R.id.action_settings, true).build()
+            )
             return true
         } else if (desiredTool == TOOL_MESSAGING) {
-            findNavController().navigate(R.id.action_main)
+            findNavController().navigate(
+                R.id.action_main,
+                null,
+                NavOptions.Builder().setPopUpTo(R.id.action_settings, true).build()
+            )
             return true
         }
         return false
