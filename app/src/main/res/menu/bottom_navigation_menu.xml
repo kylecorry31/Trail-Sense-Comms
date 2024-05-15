@@ -4,15 +4,21 @@
     tools:context=".ui.MainActivity">
 
     <item
+        android:id="@+id/action_settings"
+        android:icon="@drawable/ic_settings"
+        android:title="@string/settings"
+        app:showAsAction="ifRoom" />
+
+    <item
         android:id="@+id/action_main"
         android:icon="@drawable/ic_info"
         android:title="@string/home"
         app:showAsAction="ifRoom" />
 
     <item
-        android:id="@+id/action_settings"
-        android:icon="@drawable/ic_settings"
-        android:title="@string/settings"
+        android:id="@+id/talkFragment"
+        android:icon="@drawable/bubble"
+        android:title="@string/talk"
         app:showAsAction="ifRoom" />
 
 </menu>

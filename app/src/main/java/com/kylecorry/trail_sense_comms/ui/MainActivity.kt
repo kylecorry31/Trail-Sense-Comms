@@ -71,7 +71,7 @@ class MainActivity : AndromedaActivity() {
         bindLayoutInsets()
 
         requestPermissions(permissions) {
-            findNavController().navigate(R.id.action_main)
+            findNavController().navigate(R.id.action_settings)
         }
     }
 

@@ -10,6 +10,10 @@
         android:name="com.kylecorry.trail_sense_comms.ui.MainFragment"
         android:label="MainFragment" />
     <fragment
+        android:id="@+id/talkFragment"
+        android:name="com.kylecorry.trail_sense_comms.ui.TalkFragment"
+        android:label="TalkFragment" />
+    <fragment
         android:id="@+id/action_settings"
         android:name="com.kylecorry.trail_sense_comms.ui.SettingsFragment"
         android:label="SettingsFragment" />
