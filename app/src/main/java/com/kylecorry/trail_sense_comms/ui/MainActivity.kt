@@ -18,6 +18,7 @@ import com.kylecorry.andromeda.core.system.Resources
 import com.kylecorry.andromeda.core.tryOrNothing
 import com.kylecorry.andromeda.fragments.AndromedaActivity
 import com.kylecorry.andromeda.fragments.ColorTheme
+import com.kylecorry.andromeda.permissions.Permissions
 import com.kylecorry.trail_sense_comms.R
 import com.kylecorry.trail_sense_comms.app.NavigationUtils.setupWithNavController
 import com.kylecorry.trail_sense_comms.databinding.ActivityMainBinding
@@ -70,8 +71,24 @@ class MainActivity : AndromedaActivity() {
 
         bindLayoutInsets()
 
+        val previousPermissionStatus = permissions.map {
+            Permissions.hasPermission(this, it)
+        }
         requestPermissions(permissions) {
-            findNavController().navigate(R.id.action_settings)
+            val currentPermissionStatus = permissions.map {
+                Permissions.hasPermission(this, it)
+            }
+            val permissionsChanged =
+                previousPermissionStatus.zip(currentPermissionStatus).any { it.first != it.second }
+            startApp(permissionsChanged)
+        }
+    }
+
+    private fun startApp(shouldReload: Boolean) {
+        if (!openDesiredTool() && shouldReload) {
+            findNavController().navigate(
+                findNavController().currentDestination?.id ?: R.id.action_settings
+            )
         }
     }
 
@@ -79,13 +96,26 @@ class MainActivity : AndromedaActivity() {
         super.onNewIntent(intent)
         intent ?: return
         setIntent(intent)
+        openDesiredTool()
+    }
+
+    private fun openDesiredTool(): Boolean {
+        val desiredTool = intent?.getStringExtra("tool")
+        if (desiredTool == TOOL_TALK) {
+            findNavController().navigate(R.id.talkFragment)
+            return true
+        } else if (desiredTool == TOOL_MESSAGING) {
+            findNavController().navigate(R.id.action_main)
+            return true
+        }
+        return false
     }
 
     override fun onRestoreInstanceState(savedInstanceState: Bundle) {
         super.onRestoreInstanceState(savedInstanceState)
         binding.bottomNavigation.selectedItemId = savedInstanceState.getInt(
             "page",
-            R.id.action_main
+            R.id.action_settings
         )
         if (savedInstanceState.containsKey("navigation")) {
             tryOrNothing {
@@ -124,5 +154,10 @@ class MainActivity : AndromedaActivity() {
     private fun isDarkTheme(): Boolean {
         return resources.configuration.uiMode and
                 Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+    }
+
+    companion object {
+        private const val TOOL_MESSAGING = "4c285dfe-1c8b-45eb-bb79-3f1d2eb6ae48"
+        private const val TOOL_TALK = "b76f32bf-6a72-4992-a741-0c9bf19ebd11"
     }
 }
