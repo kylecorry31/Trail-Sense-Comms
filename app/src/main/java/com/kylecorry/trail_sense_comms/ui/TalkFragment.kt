@@ -194,6 +194,7 @@ class TalkFragment : BoundFragment<FragmentTalkBinding>() {
                     android.R.attr.colorBackgroundFloating
                 )
             )
+            audioTrack.setVolume(if (isTransmitting) 0f else 1f)
         }
     }
 
