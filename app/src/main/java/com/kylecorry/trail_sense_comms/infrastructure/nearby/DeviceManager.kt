@@ -2,7 +2,9 @@ package com.kylecorry.trail_sense_comms.infrastructure.nearby
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.util.Log
 import com.kylecorry.andromeda.connection.bluetooth.IBluetoothDevice
+import com.kylecorry.andromeda.core.tryOrNothing
 import com.kylecorry.luna.coroutines.onIO
 import com.kylecorry.trail_sense_comms.infrastructure.nearby.bluetooth.BluetoothListener
 import com.kylecorry.trail_sense_comms.infrastructure.nearby.bluetooth.BluetoothNearbyDevice
@@ -42,6 +44,7 @@ class DeviceManager(private val context: Context) {
     fun stop() {
         connectedDevice?.disconnect()
         listenJob?.cancel()
+        listener.close()
     }
 
     fun onConnectionChanged(listener: () -> Unit) {
@@ -53,16 +56,19 @@ class DeviceManager(private val context: Context) {
         onIO {
             // TODO: Only keep listening when not connected to all devices in the chat
             while (true) {
-                val socket = listener.listen("Trail Sense Comms", ConnectionDetails.bluetoothUUID)
-                    ?: return@onIO
-                println("Connected to ${socket.remoteDevice.name}")
-                connect(
-                    BluetoothNearbyDevice(SocketBluetoothDevice(
-                        context,
-                        socket.remoteDevice.address,
-                        socket
-                    ) { it.createRfcommSocketToServiceRecord(ConnectionDetails.bluetoothUUID) }
-                    ))
+                tryOrNothing {
+                    val socket =
+                        listener.listen("Trail Sense Comms", ConnectionDetails.bluetoothUUID)
+                            ?: return@onIO
+                    Log.d("DeviceManager", "Connected to ${socket.remoteDevice.name}")
+                    connect(
+                        BluetoothNearbyDevice(SocketBluetoothDevice(
+                            context,
+                            socket.remoteDevice.address,
+                            socket
+                        ) { it.createRfcommSocketToServiceRecord(ConnectionDetails.bluetoothUUID) }
+                        ))
+                }
             }
         }
     }

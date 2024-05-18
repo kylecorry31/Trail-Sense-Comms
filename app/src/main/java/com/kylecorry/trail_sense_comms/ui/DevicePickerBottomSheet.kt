@@ -11,6 +11,7 @@ import com.kylecorry.andromeda.connection.bluetooth.BluetoothService
 import com.kylecorry.andromeda.connection.bluetooth.IBluetoothDevice
 import com.kylecorry.andromeda.fragments.AndromedaFragment
 import com.kylecorry.andromeda.fragments.BoundBottomSheetDialogFragment
+import com.kylecorry.andromeda.fragments.interval
 import com.kylecorry.andromeda.views.list.ListItem
 import com.kylecorry.luna.hooks.Hooks
 import com.kylecorry.trail_sense_comms.databinding.DevicePickerSheetBinding
@@ -29,13 +30,20 @@ class DevicePickerBottomSheet : BoundBottomSheetDialogFragment<DevicePickerSheet
 
     private var onDeviceSelected: (NearbyDevice) -> Unit = {}
 
+    @SuppressLint("MissingPermission")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         if (!PermissionUtils.hasBluetoothPermission(requireContext())) {
             return
         }
 
-        devices = bluetooth.bondedDevices
+        interval(100) {
+            devices = bluetooth.bondedDevices
+            // TODO: Only show devices that are broadcasting the UUID of TS Comms
+//                .filter {
+//                it.uuids?.any { it.uuid == ConnectionDetails.bluetoothUUID } == true
+//            }
+        }
         // TODO: Use scanner
 //        observe(scanner) {
 //            devices = (scanner.devices + bluetooth.bondedDevices).distinctBy { it.address }
