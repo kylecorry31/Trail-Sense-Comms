@@ -32,16 +32,9 @@ class MainActivity : AndromedaActivity() {
     private val binding: ActivityMainBinding
         get() = _binding!!
 
-    // TODO: Only request location on older devices
-    private val permissions = mutableListOf(
-        Manifest.permission.ACCESS_COARSE_LOCATION,
-        Manifest.permission.ACCESS_FINE_LOCATION,
-        Manifest.permission.BLUETOOTH,
-        Manifest.permission.BLUETOOTH_ADMIN,
-    )
+    private val permissions = mutableListOf<String>()
 
     init {
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             permissions.add(Manifest.permission.BLUETOOTH_SCAN)
             permissions.add(Manifest.permission.BLUETOOTH_CONNECT)
