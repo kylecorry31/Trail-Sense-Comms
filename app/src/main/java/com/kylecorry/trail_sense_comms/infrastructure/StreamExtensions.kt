@@ -1,8 +1,9 @@
-package com.kylecorry.trail_sense_comms.infrastructure.nearby.bluetooth
+package com.kylecorry.trail_sense_comms.infrastructure
 
-import com.kylecorry.andromeda.connection.bluetooth.IBluetoothDevice
+import com.kylecorry.luna.streams.readUntil
+import java.io.InputStream
 
-fun IBluetoothDevice.readUntil(text: String): String {
+fun InputStream.readUntil(text: String): String {
     var matchIndex = 0
     return readUntil { char ->
         if (char == text[matchIndex]) {

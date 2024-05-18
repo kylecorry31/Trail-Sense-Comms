@@ -5,24 +5,26 @@ import android.content.Context
 import com.kylecorry.andromeda.connection.bluetooth.IBluetoothDevice
 import com.kylecorry.luna.coroutines.onIO
 import com.kylecorry.trail_sense_comms.infrastructure.nearby.bluetooth.BluetoothListener
+import com.kylecorry.trail_sense_comms.infrastructure.nearby.bluetooth.BluetoothNearbyDevice
 import com.kylecorry.trail_sense_comms.infrastructure.nearby.bluetooth.SocketBluetoothDevice
 import com.kylecorry.trail_sense_comms.ui.ConnectionDetails
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 // TODO: Attempt to reconnect when disconnected
 // TODO: Support multiple devices (groups?)
 
 class DeviceManager(private val context: Context) {
 
-    var connectedDevice: IBluetoothDevice? = null
+    var connectedDevice: NearbyDevice? = null
         private set
-    var connected = false
-        private set
-    var isConnecting = false
-        private set
+    val connected: Boolean
+        get() = connectedDevice?.connectionStatus == ConnectionStatus.Connected
+    val isConnecting: Boolean
+        get() = connectedDevice?.connectionStatus == ConnectionStatus.Connecting
     private val listener = BluetoothListener(context)
 
     private val scope = CoroutineScope(Dispatchers.IO)
@@ -31,6 +33,7 @@ class DeviceManager(private val context: Context) {
 
     fun start() {
         connectedDevice?.let { connect(it) }
+        // TODO: Stop listening when connected, restart when disconnected
         listenJob = scope.launch {
             listen()
         }
@@ -38,8 +41,6 @@ class DeviceManager(private val context: Context) {
 
     fun stop() {
         connectedDevice?.disconnect()
-        connected = false
-        isConnecting = false
         listenJob?.cancel()
     }
 
@@ -56,26 +57,26 @@ class DeviceManager(private val context: Context) {
                     ?: return@onIO
                 println("Connected to ${socket.remoteDevice.name}")
                 connect(
-                    SocketBluetoothDevice(
+                    BluetoothNearbyDevice(SocketBluetoothDevice(
                         context,
                         socket.remoteDevice.address,
                         socket
                     ) { it.createRfcommSocketToServiceRecord(ConnectionDetails.bluetoothUUID) }
-                )
+                    ))
             }
         }
     }
 
-    fun connect(device: IBluetoothDevice) {
-        isConnecting = true
+    // TODO: Do this in a coroutine
+    fun connect(device: NearbyDevice) {
         onConnectionChanged?.invoke()
         try {
             connectedDevice?.disconnect()
             connectedDevice = device
-            connectedDevice?.connect()
+            runBlocking {
+                connectedDevice?.connect()
+            }
         } finally {
-            isConnecting = false
-            connected = connectedDevice?.isConnected() == true
             onConnectionChanged?.invoke()
         }
     }

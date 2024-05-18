@@ -12,7 +12,6 @@ import android.view.View
 import android.view.ViewGroup
 import com.kylecorry.andromeda.alerts.loading.AlertLoadingIndicator
 import com.kylecorry.andromeda.alerts.loading.ILoadingIndicator
-import com.kylecorry.andromeda.connection.bluetooth.IBluetoothDevice
 import com.kylecorry.andromeda.core.system.Resources
 import com.kylecorry.andromeda.core.tryOrDefault
 import com.kylecorry.andromeda.core.ui.Colors
@@ -25,6 +24,7 @@ import com.kylecorry.trail_sense_comms.R
 import com.kylecorry.trail_sense_comms.databinding.FragmentTalkBinding
 import com.kylecorry.trail_sense_comms.infrastructure.Microphone
 import com.kylecorry.trail_sense_comms.infrastructure.nearby.DeviceManager
+import com.kylecorry.trail_sense_comms.infrastructure.nearby.NearbyDevice
 import dagger.hilt.android.AndroidEntryPoint
 
 
@@ -37,7 +37,7 @@ class TalkFragment : BoundFragment<FragmentTalkBinding>() {
     // TODO: Handle permissions
 
     private val manager by lazy { DeviceManager(requireContext()) }
-    private var connectedDevice by state<IBluetoothDevice?>(null)
+    private var connectedDevice by state<NearbyDevice?>(null)
     private var connected by state(false)
     private var isConnecting by state(false)
     private var isTransmitting by state(false)
@@ -198,16 +198,16 @@ class TalkFragment : BoundFragment<FragmentTalkBinding>() {
         }
     }
 
-    private suspend fun sendAudio(to: IBluetoothDevice) = onIO {
+    private suspend fun sendAudio(to: NearbyDevice) = onIO {
         microphone.read(transmitBuffer, 0, transmitBuffer.size)
-        to.getOutputStream()?.write(transmitBuffer)
+        to.outputStream?.write(transmitBuffer)
     }
 
-    private fun receiveAudio(device: IBluetoothDevice) {
+    private fun receiveAudio(device: NearbyDevice) {
         tryOrDefault(null) {
-            device.getInputStream()?.read(receiveBuffer, 0, receiveBuffer.size)
-            if (!isTransmitting) {
-                audioTrack.write(receiveBuffer, 0, receiveBuffer.size)
+            val readBytes = device.inputStream?.read(receiveBuffer, 0, receiveBuffer.size) ?: return
+            if (!isTransmitting && readBytes > 0) {
+                audioTrack.write(receiveBuffer, 0, readBytes)
             }
         }
     }

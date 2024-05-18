@@ -14,6 +14,8 @@ import com.kylecorry.andromeda.fragments.BoundBottomSheetDialogFragment
 import com.kylecorry.andromeda.views.list.ListItem
 import com.kylecorry.luna.hooks.Hooks
 import com.kylecorry.trail_sense_comms.databinding.DevicePickerSheetBinding
+import com.kylecorry.trail_sense_comms.infrastructure.nearby.NearbyDevice
+import com.kylecorry.trail_sense_comms.infrastructure.nearby.bluetooth.BluetoothNearbyDevice
 
 class DevicePickerBottomSheet : BoundBottomSheetDialogFragment<DevicePickerSheetBinding>() {
 
@@ -25,7 +27,7 @@ class DevicePickerBottomSheet : BoundBottomSheetDialogFragment<DevicePickerSheet
     private val bluetooth by lazy { BluetoothService(requireContext()) }
     private val scanner by lazy { BluetoothScanner(requireContext()) }
 
-    private var onDeviceSelected: (IBluetoothDevice) -> Unit = {}
+    private var onDeviceSelected: (NearbyDevice) -> Unit = {}
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -54,9 +56,11 @@ class DevicePickerBottomSheet : BoundBottomSheetDialogFragment<DevicePickerSheet
             binding.list.setItems(devices.filter { it.name != null }.mapIndexed { index, device ->
                 ListItem(index.toLong(), device.name ?: "??", device.address) {
                     onDeviceSelected(
-                        bluetooth.getSecureDevice(
-                            device.address,
-                            ConnectionDetails.bluetoothUUID
+                        BluetoothNearbyDevice(
+                            bluetooth.getSecureDevice(
+                                device.address,
+                                ConnectionDetails.bluetoothUUID
+                            )
                         )
                     )
                 }
@@ -74,7 +78,7 @@ class DevicePickerBottomSheet : BoundBottomSheetDialogFragment<DevicePickerSheet
         hooks.stopStateUpdates()
     }
 
-    fun setOnDeviceSelected(onDeviceSelected: (IBluetoothDevice) -> Unit) {
+    fun setOnDeviceSelected(onDeviceSelected: (NearbyDevice) -> Unit) {
         this.onDeviceSelected = onDeviceSelected
     }
 }

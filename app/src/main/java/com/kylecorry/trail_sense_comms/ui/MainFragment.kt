@@ -9,7 +9,6 @@ import android.view.ViewGroup
 import androidx.core.view.isVisible
 import com.kylecorry.andromeda.alerts.loading.AlertLoadingIndicator
 import com.kylecorry.andromeda.alerts.loading.ILoadingIndicator
-import com.kylecorry.andromeda.connection.bluetooth.IBluetoothDevice
 import com.kylecorry.andromeda.core.tryOrDefault
 import com.kylecorry.andromeda.fragments.BoundFragment
 import com.kylecorry.andromeda.fragments.inBackground
@@ -22,7 +21,8 @@ import com.kylecorry.sol.time.Time.toZonedDateTime
 import com.kylecorry.trail_sense_comms.R
 import com.kylecorry.trail_sense_comms.databinding.FragmentMainBinding
 import com.kylecorry.trail_sense_comms.infrastructure.nearby.DeviceManager
-import com.kylecorry.trail_sense_comms.infrastructure.nearby.bluetooth.readUntil
+import com.kylecorry.trail_sense_comms.infrastructure.nearby.NearbyDevice
+import com.kylecorry.trail_sense_comms.infrastructure.readUntil
 import dagger.hilt.android.AndroidEntryPoint
 import java.time.Instant
 import java.time.format.DateTimeFormatter
@@ -37,7 +37,7 @@ class MainFragment : BoundFragment<FragmentMainBinding>() {
 
     private val manager by lazy { DeviceManager(requireContext()) }
     private var shouldReadMessages by state(false)
-    private var connectedDevice by state<IBluetoothDevice?>(null)
+    private var connectedDevice by state<NearbyDevice?>(null)
     private var connected by state(false)
     private var isConnecting by state(false)
     private var messages by state(emptyList<Message>())
@@ -175,14 +175,15 @@ class MainFragment : BoundFragment<FragmentMainBinding>() {
         binding.messageInputLayout.isVisible = connected
     }
 
-    private suspend fun sendText(text: String, to: IBluetoothDevice) = onIO {
+    private suspend fun sendText(text: String, to: NearbyDevice) = onIO {
         val message = "$TEXT_START$text$TEXT_END"
-        to.write(message.toByteArray())
+        // TODO: Read into a buffer
+        to.outputStream?.write(message.toByteArray())
     }
 
-    private fun receiveMessage(device: IBluetoothDevice): Message? {
+    private fun receiveMessage(device: NearbyDevice): Message? {
         return tryOrDefault(null) {
-            val response = device.readUntil(TEXT_END)
+            val response = device.inputStream?.readUntil(TEXT_END) ?: return null
             val startMarker = TEXT_START
             val endMarker = TEXT_END.substring(0, TEXT_END.length - 1)
 
